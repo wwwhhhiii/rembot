@@ -21,8 +21,13 @@ def test_invalid_cmd() -> None:
 
 def test_tomorrow_special_words() -> None:
     txt = "qweqwfew fewfe efe"
-    cmd = f"завтра   16:31  {txt}"
-    res = parse_remind_cmd_args(cmd)
+    rus_tomorrow = "завтра"
+    eng_tomorrow = "tomorrow"
+    rus_cmd = f"{rus_tomorrow}   16:31  {txt}"
+    eng_cmd = f"{eng_tomorrow}   16:31  {txt}"
+
+    rus_res = parse_remind_cmd_args(rus_cmd)
+    eng_res = parse_remind_cmd_args(eng_cmd)
     
     today = datetime.datetime.now()
     tomorrow = today + datetime.timedelta(days=1)
@@ -35,5 +40,6 @@ def test_tomorrow_special_words() -> None:
         minute=31,
         second=0)
 
-    assert res.rem_time == cmd_datetime
+    assert rus_res.rem_time == cmd_datetime
+    assert eng_res.rem_time == cmd_datetime
 
