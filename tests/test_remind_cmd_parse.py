@@ -13,7 +13,7 @@ def test_valid_cmd() -> None:
 
 
 def test_invalid_cmd() -> None:
-    cmd = "aswd      12    fewffffffff"
+    cmd = "aswd      12    fewfffffff328yf &FG@F bfiu32o! @f__- - ="
     res = parse_remind_cmd_args(cmd)
 
     assert res is None
