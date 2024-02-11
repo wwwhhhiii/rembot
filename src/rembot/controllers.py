@@ -15,6 +15,7 @@ def create_reminder(request: ReminderCreateRequest) -> ...:
 
     reminder = Reminder(
         id=uuid.uuid4(),
+        reply_to_id=request.user_tg_id,
         username=request.username,
         time=request.time,
         text=request.text)
