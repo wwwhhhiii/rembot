@@ -49,8 +49,11 @@ REMIND_CMD_ARGS_PARSE_REGEX = _get_remind_cmd_args_regex(
     special_words=SPECIAL_WORDS_TO_DATE_FACTORY.keys())
 
 
-def parse_remind_cmd_args(args_str: str) -> RemCmdArgs | None:
+def parse_remind_cmd_args(args_str: str | None) -> RemCmdArgs | None:
     """"""
+
+    if args_str is None:
+        return None
 
     match = re.match(REMIND_CMD_ARGS_PARSE_REGEX, args_str)
     if match is None:
@@ -82,13 +85,3 @@ def parse_remind_cmd_args(args_str: str) -> RemCmdArgs | None:
     args = RemCmdArgs(rem_time=rem_time, text=text)
 
     return args
-
-
-def validate_and_parse_remind_cmd_args(
-    args_str: str) -> tuple[bool, RemCmdArgs | None]:
-    """"""
-
-    args = parse_remind_cmd_args(args_str.lower())
-    args_ok = args is not None
-
-    return args_ok, args
