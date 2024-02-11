@@ -10,6 +10,7 @@ class Reminder:
 
     id: uuid.UUID
     username: str
+    reply_to_id: int
     time: datetime.datetime
     text: str
 
@@ -19,6 +20,7 @@ class ReminderCreateRequest:
     """"""
 
     username: str
+    user_tg_id: int
     time: datetime.datetime
     text: str
 
@@ -27,6 +29,7 @@ class ReminderCreateRequest:
 class ReminderGetRequest:
     """"""
 
+    user_tg_id: int
     username: str
     reminder_id: uuid
 
