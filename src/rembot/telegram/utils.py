@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from typing import Iterable
 import re
 import datetime
+import functools
 
 from loguru import logger
 
@@ -17,9 +18,9 @@ def tomorrow_date_factory() -> datetime.datetime:
 
 
 SPECIAL_WORDS_TO_DATE_FACTORY = {
-    "сегодня": lambda: datetime.datetime.today,
+    "сегодня": functools.partial(datetime.datetime.today),
     "завтра": tomorrow_date_factory,
-    "today": lambda: datetime.datetime.today,
+    "today": functools.partial(datetime.datetime.today),
     "tomorrow": tomorrow_date_factory,
 }
 
