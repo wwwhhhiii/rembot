@@ -5,12 +5,19 @@ from attrs import define
 
 
 @define
+class User:
+    """"""
+
+    id: uuid.UUID
+    tg_id: int
+    username: str
+
+
+@define
 class Reminder:
     """"""
 
     id: uuid.UUID
-    username: str
-    reply_to_id: int
     time: datetime.datetime
     text: str
 
