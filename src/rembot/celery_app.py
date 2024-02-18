@@ -1,6 +1,6 @@
 from celery import Celery
 
-from settings.messaging import messaging_settings
+from messaging_settings import messaging_settings
 
 
 app = Celery(
