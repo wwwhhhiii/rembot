@@ -7,6 +7,8 @@ from telegram.keyboards import get_main_menu_keyboard
 from telegram.utils import (
     parse_remind_cmd_args,
 )
+from controllers import RequestExecStatus, create_reminder
+from models import ReminderCreateRequest
 
 
 router = aiogram.Router(name="rem")
@@ -51,12 +53,21 @@ async def cmd_create_reminder_handler(
         await message.answer(f"Invalid command format")
         return
 
+    req = ReminderCreateRequest(
+        username="",
+        user_tg_id=0,
+        time=args.rem_time,
+        text=args.text)
+    res = await create_reminder(req)
 
-    date = args.rem_time.date()
-    answer = (
-        f"Reminder has been successfully set.\n"
-        f"Time: {date.day}.{date.month} {args.rem_time.hour}:{args.rem_time.minute}\n"
-        f"Text: {args.text}"
-    )
-    await message.answer(answer)
+    if res == RequestExecStatus.OK:
+        date = args.rem_time.date()
+        answer = (
+            f"Reminder has been successfully set.\n"
+            f"Time: {date.day}.{date.month} {args.rem_time.hour}:{args.rem_time.minute}\n"
+            f"Text: {args.text}"
+        )
+        await message.answer(answer)
+    else:
+        await message.answer(f"Something went wrong ({res.name})")
 
