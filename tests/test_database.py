@@ -50,8 +50,9 @@ async def test_get_reminders_in_timeframe() -> None:
                 ]
             )
 
-    res = await queries.get_reminders_within_time(
-        session_factory, start, end)
+    async with session_factory() as session:
+        res = await queries.get_reminders_within_time(
+            session, start, end)
     
     in_time = set((in1, in2))
     got_time = set([rem.time for rem in res])

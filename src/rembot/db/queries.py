@@ -50,21 +50,20 @@ async def get_reminder(id: uuid.UUID) -> Reminder | None:
 
     
 async def get_reminders_within_time(
-    session_factory: async_sessionmaker[AsyncSession],
+    session: AsyncSession,
     start: datetime.datetime,
     end: datetime.datetime,
 ) -> list[Reminder]:
     """"""
 
-    async with session_factory() as session:
-        async with session.begin():
-            stmt = (
-                select(ReminderInDB).\
-                filter(and_((ReminderInDB.time > start), (ReminderInDB.time < end)))
-            )
-            reminders = await session.scalars(stmt)
+    async with session.begin():
+        stmt = (
+            select(ReminderInDB).\
+            filter(and_((ReminderInDB.time > start), (ReminderInDB.time < end)))
+        )
+        reminders = await session.scalars(stmt)
     
-            return [Reminder(rec.id, rec.time, rec.text) for rec in reminders]
+        return [Reminder(rec.id, rec.time, rec.text) for rec in reminders]
 
 
 async def delete_reminder(id: uuid.UUID) -> Reminder | None:
