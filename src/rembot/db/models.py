@@ -1,27 +1,47 @@
-from tortoise.models import Model
-from tortoise import fields
+import uuid
+import datetime
+from typing import List
+
+from sqlalchemy import String, ForeignKey
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+from sqlalchemy.ext.asyncio import AsyncAttrs
 
 
-class RemUser(Model):
+class Base(AsyncAttrs, DeclarativeBase):
+    pass
+
+
+class User(Base):
     """"""
 
-    id = fields.UUIDField(pk=True)
-    tg_id = fields.IntField()
-    username = fields.CharField(max_length=50)
-    reminders: fields.ManyToManyRelation["Reminder"]
+    __tablename__ = "user_account"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    tg_id: Mapped[int]
+    username: Mapped[str] = mapped_column(
+        String(50), unique=True, index=True)  # TODO mb search by username?
+
+    reminders: Mapped[List["Reminder"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan")
 
     def __str__(self) -> str:
         return self.username
 
 
-class Reminder(Model):
+class Reminder(Base):
     """"""
 
-    id = fields.UUIDField(pk=True)
-    time = fields.DatetimeField()
-    text = fields.TextField()
-    user: fields.ManyToManyRelation[RemUser] = fields.ManyToManyField(
-        'models.RemUser', related_name='reminders', on_delete=fields.CASCADE)
+    __tablename__ = "reminder"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        primary_key=True, default=uuid.uuid4)
+    time: Mapped[datetime.datetime]
+    text: Mapped[str] = mapped_column(String(200))
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("user_account.id"), nullable=False)
+
+    user: Mapped["User"] = relationship(
+        back_populates="reminders")
 
     def __str__(self) -> str:
         return str(self.time)
