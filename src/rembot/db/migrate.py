@@ -1,20 +1,16 @@
 from loguru import logger
-import tortoise
+import uvloop
+from sqlalchemy.ext.asyncio import create_async_engine
 
 from settings import db_settings
+from models import Base
 
 
 async def run_migrations() -> None:
-    """"""
-
-    await tortoise.Tortoise.init(
-        db_url=db_settings.connection_string,
-        modules={'models': ['models']})
-
-    logger.info("Generating schemas...")
-    await tortoise.Tortoise.generate_schemas()
-    logger.info("Schemas has been generated")
+    engine = create_async_engine(db_settings.connection_string)
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
 
 
 if __name__ == "__main__":
-    tortoise.run_async(run_migrations())
+    uvloop.run(run_migrations())
