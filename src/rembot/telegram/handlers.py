@@ -10,13 +10,13 @@ from telegram.utils import (
     parse_remind_cmd_args,
 )
 from controllers import RequestExecStatus, create_reminder
-from models import ReminderCreateRequest
+from app_models import ReminderCreateRequest
 
 
 router = aiogram.Router(name="rem")
 
 
-@router.message(Command("start"))
+@router.message(Command("start"))  # type: ignore
 async def cmd_start_handler(
     message: aiogram.types.Message,
 ) -> None:
@@ -26,18 +26,18 @@ async def cmd_start_handler(
     ...
     """
 
-    logger.debug(f"Recieved /start command from {message.from_user.username}")
+    if message.from_user is not None:
+        logger.debug(f"Recieved /start command from {message.from_user.username}")
 
-    _settings = {
-        "resize_keyboard": True
-    }
+    settings = {"resize_keyboard": True}
 
     await message.answer(
         "Reminder bot is started",
-        reply_markup=get_main_menu_keyboard().as_markup(**_settings))
+        reply_markup=get_main_menu_keyboard().as_markup(**settings),
+    )
 
 
-@router.message(Command("remind"))
+@router.message(Command("remind"))  # type: ignore
 async def cmd_create_reminder_handler(
     message: aiogram.types.Message,
     command: CommandObject,
@@ -48,19 +48,28 @@ async def cmd_create_reminder_handler(
     ...
     """
 
-    logger.debug(f"Recieved /remind command from {message.from_user.username}")
-    
+    if message.from_user is not None:
+        logger.debug(f"Recieved /remind command from {message.from_user.username}")
+
     args = parse_remind_cmd_args(command.args)
     if args is None:
         logger.debug(f"Invalid remind command args: {command.args}")
         await message.answer(f"Invalid command format")
         return
 
+    fromuser = message.from_user
+    if fromuser is None:
+        logger.debug(f"Unable to get user of the message")
+        return
+
+    username = "" if fromuser.username is None else fromuser.username
+
     req = ReminderCreateRequest(
-        username=message.from_user.username or "",
-        user_tg_id=message.from_user.id,
+        username=username,
+        user_tg_id=fromuser.id,
         time=args.rem_time.replace(tzinfo=datetime.timezone.utc),
-        text=args.text)
+        text=args.text,
+    )
     res = await create_reminder(req)
 
     if res == RequestExecStatus.OK:
@@ -73,4 +82,3 @@ async def cmd_create_reminder_handler(
         await message.answer(answer)
     else:
         await message.answer(f"Something went wrong ({res.name})")
-

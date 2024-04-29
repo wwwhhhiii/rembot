@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Iterable
+from typing import Iterable, Callable
 import re
 import datetime
 import functools
@@ -18,7 +18,7 @@ def tomorrow_date_factory() -> datetime.datetime:
     return datetime.datetime.today() + datetime.timedelta(days=1)
 
 
-SPECIAL_WORDS_TO_DATE_FACTORY = {
+SPECIAL_WORDS_TO_DATE_FACTORY: dict[str, Callable[[], datetime.datetime]] = {
     "сегодня": functools.partial(datetime.datetime.today),
     "завтра": tomorrow_date_factory,
     "today": functools.partial(datetime.datetime.today),
@@ -28,9 +28,9 @@ SPECIAL_WORDS_TO_DATE_FACTORY = {
 
 def _get_remind_cmd_args_regex(
     special_words: Iterable[str],
-) -> re.Pattern:
+) -> re.Pattern[str]:
     """Compiles case-insensitive arguments regex.
-    
+
     Arguments: date time text
     """
 
@@ -41,14 +41,21 @@ def _get_remind_cmd_args_regex(
     REMIND_TEXT_REGEX = ".{1,200}"
     SPACING_REGEX = " {1,5}"
 
-    time_regex = f"^({DAY_REGEX})" + SPACING_REGEX + f"({TIME_REGEX})" + SPACING_REGEX + f"({REMIND_TEXT_REGEX})$"
+    time_regex = (
+        f"^({DAY_REGEX})"
+        + SPACING_REGEX
+        + f"({TIME_REGEX})"
+        + SPACING_REGEX
+        + f"({REMIND_TEXT_REGEX})$"
+    )
     logger.debug(f"Time regex: {time_regex}")
 
     return re.compile(time_regex, flags=re.IGNORECASE)
 
 
 REMIND_CMD_ARGS_PARSE_REGEX = _get_remind_cmd_args_regex(
-    special_words=SPECIAL_WORDS_TO_DATE_FACTORY.keys())
+    special_words=SPECIAL_WORDS_TO_DATE_FACTORY.keys()
+)
 
 
 def parse_remind_cmd_args(args_str: str | None) -> RemCmdArgs | None:
@@ -65,8 +72,7 @@ def parse_remind_cmd_args(args_str: str | None) -> RemCmdArgs | None:
 
     date = match.group(1)
     dt_func = SPECIAL_WORDS_TO_DATE_FACTORY.get(date)
-    date_is_special_word = dt_func is not None
-    if date_is_special_word:
+    if dt_func is not None:
         date = dt_func()
     else:
         day, month = int(match.group(2)), int(match.group(3))
@@ -82,14 +88,15 @@ def parse_remind_cmd_args(args_str: str | None) -> RemCmdArgs | None:
         month=date.month,
         day=date.day,
         hour=hour,
-        minute=minute,)
+        minute=minute,
+    )
 
     args = RemCmdArgs(rem_time=rem_time, text=text)
 
     return args
 
 
-async def send_reminders_to_users(user_id: uuid.UUID) -> ...:
+async def send_reminders_to_users(user_id: uuid.UUID) -> None:
     """"""
 
-    return True
+    return None

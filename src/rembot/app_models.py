@@ -1,11 +1,10 @@
+from dataclasses import dataclass
 import datetime
 import uuid
 import enum
 
-from attrs import define
 
-
-@define
+@dataclass
 class User:
     """"""
 
@@ -14,16 +13,17 @@ class User:
     username: str
 
 
-@define
+@dataclass
 class Reminder:
     """"""
 
     id: uuid.UUID
+    user_id: uuid.UUID
     time: datetime.datetime  # TODO add time validation at init
     text: str
 
 
-@define
+@dataclass
 class ReminderCreateRequest:
     """"""
 
@@ -33,23 +33,23 @@ class ReminderCreateRequest:
     text: str
 
 
-@define
+@dataclass
 class ReminderGetRequest:
     """"""
 
     user_tg_id: int
     username: str
-    reminder_id: uuid
+    reminder_id: uuid.UUID
 
 
-@define
+@dataclass
 class ReminderUpdateRequest:
     """"""
 
     ...
 
 
-@define
+@dataclass
 class ReminderDeleteRequest:
     """"""
 

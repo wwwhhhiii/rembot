@@ -14,4 +14,6 @@ async def run_migrations() -> None:
 
 
 if __name__ == "__main__":
+    logger.info("Running migrations...")
     uvloop.run(run_migrations())
+    logger.info("Migrations complete")

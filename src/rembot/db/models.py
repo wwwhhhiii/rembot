@@ -7,11 +7,11 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy.ext.asyncio import AsyncAttrs
 
 
-class Base(AsyncAttrs, DeclarativeBase):
+class Base(AsyncAttrs, DeclarativeBase):  # type: ignore[misc]
     pass
 
 
-class User(Base):
+class DBUser(Base):
     """"""
 
     __tablename__ = "user_account"
@@ -19,29 +19,30 @@ class User(Base):
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     tg_id: Mapped[int]
     username: Mapped[str] = mapped_column(
-        String(50), unique=True, index=True)  # TODO mb search by username?
+        String(50), unique=True, index=True
+    )  # TODO mb search by username?
 
-    reminders: Mapped[List["Reminder"]] = relationship(
-        back_populates="user", cascade="all, delete-orphan")
+    reminders: Mapped[List["DBReminder"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
 
     def __str__(self) -> str:
-        return self.username
+        return str(self.username)
 
 
-class Reminder(Base):
+class DBReminder(Base):
     """"""
 
     __tablename__ = "reminder"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        primary_key=True, default=uuid.uuid4)
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     time: Mapped[datetime.datetime]
     text: Mapped[str] = mapped_column(String(200))
     user_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("user_account.id"), nullable=False)
+        ForeignKey("user_account.id"), nullable=False
+    )
 
-    user: Mapped["User"] = relationship(
-        back_populates="reminders")
+    user: Mapped["DBUser"] = relationship(back_populates="reminders")
 
     def __str__(self) -> str:
         return str(self.time)
