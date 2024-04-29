@@ -27,8 +27,7 @@ class Reminder:
 class ReminderCreateRequest:
     """"""
 
-    username: str
-    user_tg_id: int
+    user: User
     time: datetime.datetime
     text: str
 

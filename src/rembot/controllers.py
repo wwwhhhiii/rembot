@@ -3,7 +3,7 @@ import uuid
 from loguru import logger
 
 import tasks
-from rembot.app_models import (
+from app_models import (
     User,
     Reminder,
     RequestExecStatus,
@@ -21,13 +21,18 @@ async def create_reminder(request: ReminderCreateRequest) -> RequestExecStatus:
     """"""
 
     try:
-        reminder = Reminder(id=uuid.uuid4(), time=request.time, text=request.text)
+        reminder = Reminder(
+            id=uuid.uuid4(),
+            user_id=request.user.id,
+            time=request.time,
+            text=request.text,
+        )
     except Exception as e:
         logger.error(f"Invalid reminder create request: {request}")
         return RequestExecStatus.INVALID
 
     user = User(  # TODO move in other place
-        id=uuid.uuid4(), tg_id=request.user_tg_id, username=request.username
+        id=uuid.uuid4(), tg_id=request.user.tg_id, username=request.user.username
     )
     await db_queries.create_user(user)
     try:
