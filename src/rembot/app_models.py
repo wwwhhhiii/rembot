@@ -8,7 +8,7 @@ import enum
 class User:
     """"""
 
-    id: uuid.UUID
+    id: uuid.UUID | None
     tg_id: int
     username: str
 
