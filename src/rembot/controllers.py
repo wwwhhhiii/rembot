@@ -1,26 +1,20 @@
 import uuid
-import enum
 
 from loguru import logger
-from attrs import asdict
 
-from tasks import exec_reminder
+import tasks
 from models import (
     User,
     Reminder,
+    RequestExecStatus,
     ReminderCreateRequest,
     ReminderGetRequest,
     ReminderUpdateRequest,
     ReminderDeleteRequest,
 )
 from db import queries as db_queries
-
-
-class RequestExecStatus(int, enum.Enum):
-    OK = enum.auto()
-    INVALID = enum.auto()
-    DB_ERROR = enum.auto()
-    TASK_ERROR = enum.auto()
+import utils
+from telegram import utils as tg_utils
 
 
 async def create_reminder(request: ReminderCreateRequest) -> RequestExecStatus:
@@ -35,8 +29,7 @@ async def create_reminder(request: ReminderCreateRequest) -> RequestExecStatus:
         logger.error(f"Invalid reminder create request: {request}")
         return RequestExecStatus.INVALID
 
-
-    user = User(
+    user = User(  # TODO move in other place
         id=uuid.uuid4(),
         tg_id=request.user_tg_id,
         username=request.username)
@@ -47,16 +40,19 @@ async def create_reminder(request: ReminderCreateRequest) -> RequestExecStatus:
         logger.error(f"Database error: {e}")
         return RequestExecStatus.DB_ERROR
 
-    try:
-        exec_reminder.delay(asdict(reminder))
-    except Exception as e:
-        logger.error(f"Task error: {e}")
-        return RequestExecStatus.TASK_ERROR
+    # try:
+    #     tasks.dispatch_reminder.apply_async(
+    #         (reminder.id,),
+    #         eta=utils.datetime_to_greenwich(reminder.time))
+    #     logger.debug(reminder.time)
+    # except Exception as e:
+    #     logger.error(f"Task error: {e}")
+    #     return RequestExecStatus.TASK_ERROR
 
     return RequestExecStatus.OK
 
 
-def get_reminder(request: ReminderGetRequest) -> ...:
+def get_reminder(request: ReminderGetRequest) -> RequestExecStatus:
     """"""
 
     # TODO get reminder by id
@@ -71,7 +67,7 @@ def get_user_reminders(username: str) -> ...:
     # TODO return paginated reminders
 
 
-def update_reminder(request: ReminderUpdateRequest) -> ...:
+def update_reminder(request: ReminderUpdateRequest) -> RequestExecStatus:
     """"""
 
     # TODO load reminder from db, check if exists
@@ -81,17 +77,16 @@ def update_reminder(request: ReminderUpdateRequest) -> ...:
 
     # TODO if updated text -> update text in db
     # TODO if updated time -> update time in db -> delete worker, start worker with new time
-    res = exec_reminder.delay(reminder)
 
     # TODO return success status
 
 
-def delete_reminder(request: ReminderDeleteRequest) -> ...:
+def delete_reminder(request: ReminderDeleteRequest) -> RequestExecStatus:
     """"""
 
     # TODO load reminder from db, check if exists
     # TODO stop worker, delete reminder from db
 
 
-def dispatch_reminder_to_user(request: ...) -> ...:
-    ...
+async def dispatch_reminder_to_user(request: ...) -> RequestExecStatus:
+    await tg_utils.send_rem_to_user()
