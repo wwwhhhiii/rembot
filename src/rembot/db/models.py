@@ -17,10 +17,8 @@ class DBUser(Base):
     __tablename__ = "user_account"
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
-    tg_id: Mapped[int]
-    username: Mapped[str] = mapped_column(
-        String(50), unique=True, index=True
-    )  # TODO mb search by username?
+    tg_id: Mapped[int] = mapped_column(unique=True, index=True)
+    username: Mapped[str] = mapped_column(String(50))
 
     reminders: Mapped[List["DBReminder"]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
