@@ -20,6 +20,12 @@ from telegram import utils as tg_utils
 async def create_reminder(request: ReminderCreateRequest) -> RequestExecStatus:
     """"""
 
+    # TODO validate reminder format
+    # TODO check if user with tg_id exists, if not - create
+
+    # By this line user should be either determined, either created
+    request.user.id = uuid.uuid4()  # TODO replace
+
     try:
         reminder = Reminder(
             id=uuid.uuid4(),
@@ -36,7 +42,7 @@ async def create_reminder(request: ReminderCreateRequest) -> RequestExecStatus:
     )
     await db_queries.create_user(user)
     try:
-        await db_queries.create_reminder(reminder, user_id=user.id)
+        await db_queries.create_reminder(reminder, user_id=request.user.id)
     except Exception as e:
         logger.error(f"Database error: {e}")
         return RequestExecStatus.DB_ERROR

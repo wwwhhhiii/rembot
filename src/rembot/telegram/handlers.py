@@ -10,7 +10,7 @@ from telegram.utils import (
     parse_remind_cmd_args,
 )
 from controllers import RequestExecStatus, create_reminder
-from app_models import ReminderCreateRequest
+from app_models import ReminderCreateRequest, User
 
 
 router = aiogram.Router(name="rem")
@@ -65,8 +65,10 @@ async def cmd_create_reminder_handler(
     username = "" if fromuser.username is None else fromuser.username
 
     req = ReminderCreateRequest(
-        username=username,
-        user_tg_id=fromuser.id,
+        user=User(
+            tg_id=fromuser.id,
+            username=username,
+        ),
         time=args.rem_time.replace(tzinfo=datetime.timezone.utc),
         text=args.text,
     )

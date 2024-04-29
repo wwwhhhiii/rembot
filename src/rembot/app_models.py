@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import datetime
 import uuid
 import enum
@@ -8,9 +8,9 @@ import enum
 class User:
     """"""
 
-    id: uuid.UUID | None
     tg_id: int
     username: str
+    id: uuid.UUID | None = field(default=None)
 
 
 @dataclass
