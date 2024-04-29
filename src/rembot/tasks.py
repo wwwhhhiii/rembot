@@ -1,125 +1,81 @@
-import uuid
 import asyncio
-from typing import Coroutine, Any
+import uuid
+from typing import Coroutine, Any, Callable
 import datetime
+import time
 
-import gevent
-import uvloop
 from loguru import logger
-from celery import shared_task
-import tortoise
 
-from celery_app import app, REMINDERS_CHECK_INTEVAL_SEC
 from db import queries as db_queries
 from db.settings import db_settings
+from db.util import async_scoped_session_factory
 from telegram import utils as tg_utils
 
 
-def _greenlet_compat_async_call(
-    coro: Coroutine,
-    *,
-    loop: asyncio.AbstractEventLoop,
-) -> tuple[Any | None, Exception | None]:
-    """    
-    Execute asyncio coroutine in current greenlet and try not to starve other greenlets.
-    """
+async def execute_periodically(
+    func: Callable,
+    preiod_sec: int,
+    *func_args,
+    **func_kwds) -> None:
 
-    async def run() -> Any | None:
-
-        task = loop.create_task(coro)
-        while not task.done():
-            await asyncio.sleep(0.2)
-            gevent.sleep(0.1)
+    while True:
+        await asyncio.sleep(preiod_sec)
 
         try:
-            return task.result(), None
-        except Exception as exc:
-            return None, exc
-
-    res = loop.run_until_complete(run())
-
-    return res
+            res = await func(*func_args, **func_kwds)
+        except Exception as e:
+            logger.error(f"Exception during periodic task execution: {e}")
 
 
-@shared_task
-def schedule_upcoming_reminders(timeframe_sec: int) -> None:
-    """Schedules reminders that should be dispatched from now to a given time frame"""
+async def on_reminder_dispatch_cleanup(
+    reminder_id: uuid.UUID) -> ...:
+    """"""
 
-    loop = uvloop.new_event_loop()
+    reminder = await db_queries.delete_reminder(
+        id=reminder_id)
 
-    res, exc = _greenlet_compat_async_call(
-        tortoise.Tortoise.init(
-            db_url=db_settings.connection_string,
-            modules={'models': ['db.models']}), loop=loop)
-    if exc is not None:
-        logger.error(f"Error during orm initialization {exc}")
-        return
+    return reminder
+
+
+async def dispatch_reminder_after(
+    reminder_id: uuid.UUID, after_sec: int) -> ...:
+    """"""
+
+    await asyncio.sleep(after_sec)
+    # TODO load fresh reminder
+    reminder = await db_queries.get_reminder(reminder_id)
+    # TODO dispatch
+    await tg_utils.send_reminders_to_users(user_id=reminder.user_id)
+    reminder = await on_reminder_dispatch_cleanup(reminder.id)
+
+    return reminder
+
+
+async def schedule_upcoming_reminders(timeframe_sec: int) -> None:
+    """Schedules reminders that should be dispatched in a timedelta 
+    from now to a given time frame.
+    
+    This task is intended to be called periodically
+    """
+
+    logger.debug(f"Running scheduling task...")
 
     start = datetime.datetime.now()
     end = start + datetime.timedelta(seconds=timeframe_sec)
-    reminders, exc = _greenlet_compat_async_call(
-        db_queries.get_reminders_within_time(start, end), loop=loop)
-    if exc is not None:
-        logger.error(f"Error during reminders fetching: {exc}")
-        ...
 
+    logger.info(f"Collecting upcoming reminders in a {start}-{end} timeframe...")
     
+    async with async_scoped_session_factory() as session:
+        reminders = await db_queries.get_reminders_within_time(
+            session, start, end)
 
+    logger.info(f"Collected {len(reminders)} upcoming reminders")
+    logger.debug(f"Scheduling reminders for dispatch...")
 
-@app.on_after_configure.connect
-def setup_periodic_tasks(sender, **kwargs) -> None:
-    """"""
+    reminder_tasks = []
+    for rem in reminders:
+        rem_left_sec = time.mktime(rem.time.timetuple()) - time.time()
+        reminder_tasks.append(
+            asyncio.create_task(dispatch_reminder_after(rem.id, rem_left_sec)))
 
-    sender.add_periodic_task(
-        REMINDERS_CHECK_INTEVAL_SEC,
-        schedule_upcoming_reminders.s(REMINDERS_CHECK_INTEVAL_SEC))
-
-
-@shared_task
-def dispatch_reminder(reminder_id: uuid.UUID) -> None:
-    """"""
-    
-    logger.debug("Dispatching reminder...")
-
-    loop = uvloop.new_event_loop()
-
-    logger.debug("Init tortoise...")
-    
-    res, exc = _greenlet_compat_async_call(
-        tortoise.Tortoise.init(
-            db_url=db_settings.connection_string,
-            modules={'models': ['db.models']}), loop=loop)
-    if exc is not None:
-        logger.error(f"Error during orm initialization {exc}")
-        return
-
-    logger.debug("Initialized tortoise")
-
-    reminder, exc = _greenlet_compat_async_call(
-        db_queries.get_reminder(reminder_id), loop=loop)
-    if exc is not None:
-        logger.error(f"Error during reminder retrieval: {exc}")
-        return
-        ...  # TODO
-
-    logger.debug(f"Got reminder from db: {reminder}")
-
-    user_id = ...
-
-    status, exc = _greenlet_compat_async_call(
-        tg_utils.send_reminders_to_users(user_id), loop=loop)
-    if exc is not None:
-        logger.error(f"Error during reminder dispatching: {exc}")
-        return
-        ...  # TODO
-    if status != True:
-        logger.error(f"Unsuccessfull reminder dispatch request ({status.value})")
-        return
-        ...  # TODO
-
-    reminder = _greenlet_compat_async_call(
-        db_queries.delete_reminder(reminder_id), loop=loop)
-    if reminder is None:
-        logger.warning(f"Tried to delete unexisting reminder: {reminder_id}")
-
-    logger.debug("Reminder dispatched")
+    await asyncio.gather(*reminder_tasks)
