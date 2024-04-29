@@ -1,5 +1,6 @@
 import datetime
 import uuid
+import enum
 
 from attrs import define
 
@@ -18,7 +19,7 @@ class Reminder:
     """"""
 
     id: uuid.UUID
-    time: datetime.datetime
+    time: datetime.datetime  # TODO add time validation at init
     text: str
 
 
@@ -53,3 +54,10 @@ class ReminderDeleteRequest:
     """"""
 
     ...
+
+
+class RequestExecStatus(int, enum.Enum):
+    OK = enum.auto()
+    INVALID = enum.auto()
+    DB_ERROR = enum.auto()
+    TASK_ERROR = enum.auto()

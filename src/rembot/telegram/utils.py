@@ -3,6 +3,7 @@ from typing import Iterable
 import re
 import datetime
 import functools
+import uuid
 
 from loguru import logger
 
@@ -86,3 +87,9 @@ def parse_remind_cmd_args(args_str: str | None) -> RemCmdArgs | None:
     args = RemCmdArgs(rem_time=rem_time, text=text)
 
     return args
+
+
+async def send_reminders_to_users(user_id: uuid.UUID) -> ...:
+    """"""
+
+    return True

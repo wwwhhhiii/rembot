@@ -1,3 +1,5 @@
+import datetime
+
 import aiogram
 from aiogram.filters import Command
 from aiogram.filters.command import CommandObject
@@ -31,7 +33,8 @@ async def cmd_start_handler(
     }
 
     await message.answer(
-        "Reminder bot is started", reply_markup=get_main_menu_keyboard().as_markup(**_settings))
+        "Reminder bot is started",
+        reply_markup=get_main_menu_keyboard().as_markup(**_settings))
 
 
 @router.message(Command("remind"))
@@ -54,9 +57,9 @@ async def cmd_create_reminder_handler(
         return
 
     req = ReminderCreateRequest(
-        username="",
-        user_tg_id=0,
-        time=args.rem_time,
+        username=message.from_user.username or "",
+        user_tg_id=message.from_user.id,
+        time=args.rem_time.replace(tzinfo=datetime.timezone.utc),
         text=args.text)
     res = await create_reminder(req)
 
