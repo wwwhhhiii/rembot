@@ -43,12 +43,10 @@ async def create_reminder(request: ReminderCreateRequest) -> RequestExecStatus:
             )
             logger.debug(f"User '{request.user.tg_id}' has been created")
 
-        request.user.id = user.id
-
         try:
             reminder = Reminder(
                 id=uuid.uuid4(),
-                user_id=request.user.id,
+                user_id=user.id,
                 time=request.time,
                 text=request.text,
             )
