@@ -61,15 +61,16 @@ async def create_reminder(
     session: AsyncSession,
     reminder: Reminder,
 ) -> None:
-    """
-    Creates new reminder in database.\n
+    """Creates new reminder in database.\n
     Binds to existing user from database.
+
+    raises `LookupError` when user not found
     """
 
     async with session.begin() as transaction:
         user = await session.scalar(select(DBUser).where(DBUser.id == reminder.user_id))
         if user is None:
-            raise LookupError  # TODO desciption
+            raise LookupError(f"User with id {reminder.user_id} not found")
 
         rem = DBReminder(
             time=reminder.time, text=reminder.text, user_id=reminder.user_id
@@ -97,7 +98,7 @@ async def get_reminders_within_time(
     start: datetime.datetime,
     end: datetime.datetime,
 ) -> list[Reminder]:
-    """"""
+    """Queries reminders from database within given time frame"""
 
     async with session.begin():
         stmt = select(DBReminder).filter(
