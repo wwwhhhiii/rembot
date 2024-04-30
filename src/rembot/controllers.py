@@ -24,6 +24,10 @@ async def create_reminder(request: ReminderCreateRequest) -> RequestExecStatus:
     If `request` contains unknown telegram id - creates new user
     """
 
+    # TODO validate reminder data
+    # logger.error(f"Invalid reminder create request: {request}")
+    # return RequestExecStatus.INVALID
+
     async with async_scoped_session_factory() as session:
         logger.debug(f"Querying for user '{request.user.username}' in database...")
         user = await db_queries.get_user_by_tg_id(
@@ -43,16 +47,12 @@ async def create_reminder(request: ReminderCreateRequest) -> RequestExecStatus:
             )
             logger.debug(f"User '{request.user.tg_id}' has been created")
 
-        try:
-            reminder = Reminder(
-                id=uuid.uuid4(),
-                user_id=user.id,
-                time=request.time,
-                text=request.text,
-            )
-        except Exception as e:
-            logger.error(f"Invalid reminder create request: {request}")
-            return RequestExecStatus.INVALID
+        reminder = Reminder(
+            id=uuid.uuid4(),
+            user_id=user.id,
+            time=request.time,
+            text=request.text,
+        )
 
         logger.debug(f"Creating reminder for user '{request.user.tg_id}'...")
 
