@@ -1,45 +1,80 @@
 import uuid
 import datetime
 
-from sqlalchemy.ext.asyncio import async_sessionmaker, AsyncSession
-from sqlalchemy import select, and_, delete, insert
+from loguru import logger
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, and_
 
 from db.models import DBReminder, DBUser
 from app_models import Reminder, User
 
 
-async def create_user(user: User) -> DBUser | None:
-    """Creates new user in database"""
+async def create_user(
+    session: AsyncSession,
+    id_: uuid.UUID,
+    telegram_id: int,
+    username: str,
+) -> User:
+    """Creates new user in database
 
-    # stmt =
-    # u = await DBUser.create(
-    #     id=user.id, tg_id=user.tg_id, username=user.username)
+    Returns user database model instance
+    """
 
-    # return u
-    # TODO update to sqlalchemy
+    async with session.begin() as transaction:
+        user = DBUser(id=id_, tg_id=telegram_id, username=username)
+        session.add(user)  # TODO catch errors
 
-    return None
+        created_user = User(id=user.id, tg_id=user.tg_id, username=username)
+
+    return created_user
 
 
-async def create_reminder(reminder: Reminder, user_id: uuid.UUID) -> DBReminder | None:
+async def get_user_by_tg_id(
+    session: AsyncSession,
+    telegram_id: int,
+) -> User | None:
+    """Selects user from database by its telegram id.
+
+    If no user was found - returns `None`
+    """
+
+    stmt = select(DBUser).where(DBUser.tg_id == telegram_id)
+
+    async with session.begin() as transaction:
+        res = await session.scalar(stmt)
+        if res is None:
+            return None
+
+        user = User(id=res.id, tg_id=res.tg_id, username=res.username)
+
+    return user
+
+
+async def get_user_by_id(
+    session: AsyncSession,
+    id_: uuid.UUID,
+) -> User | None:
+    """"""
+
+
+async def create_reminder(
+    session: AsyncSession,
+    reminder: Reminder,
+) -> None:
     """
     Creates new reminder in database.\n
     Binds to existing user from database.
     """
 
-    # user = await DBUser.filter(id=str(user_id)).first()
-    # if user is None:
-    #     raise RuntimeError(f"User with id {user_id} doesn't exist")
+    async with session.begin() as transaction:
+        user = await session.scalar(select(DBUser).where(DBUser.id == reminder.user_id))
+        if user is None:
+            raise LookupError  # TODO desciption
 
-    # rem = await DBReminder.create(
-    #     id=reminder.id,
-    #     time=reminder.time,
-    #     text=reminder.text)
-    # await rem.user.add(user)
-
-    # return rem
-
-    # TODO update to sqlalchemy
+        rem = DBReminder(
+            time=reminder.time, text=reminder.text, user_id=reminder.user_id
+        )
+        session.add(rem)  # TODO catch errors
 
     return None
 

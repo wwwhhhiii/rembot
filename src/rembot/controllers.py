@@ -13,41 +13,63 @@ from app_models import (
     ReminderDeleteRequest,
 )
 from db import queries as db_queries
+from db.util import async_scoped_session_factory
 import utils
 from telegram import utils as tg_utils
 
 
 async def create_reminder(request: ReminderCreateRequest) -> RequestExecStatus:
-    """"""
+    """Creates a reminder from request for existing or yet non-existing user.
 
-    # TODO validate reminder format
-    # TODO check if user with tg_id exists, if not - create
+    If `request` contains unknown telegram id - creates new user
+    """
 
-    # By this line user should be either determined, either created
-    request.user.id = uuid.uuid4()  # TODO replace
-
-    try:
-        reminder = Reminder(
-            id=uuid.uuid4(),
-            user_id=request.user.id,
-            time=request.time,
-            text=request.text,
+    async with async_scoped_session_factory() as session:
+        logger.debug(f"Querying for user '{request.user.username}' in database...")
+        user = await db_queries.get_user_by_tg_id(
+            session,
+            telegram_id=request.user.tg_id,
         )
-    except Exception as e:
-        logger.error(f"Invalid reminder create request: {request}")
-        return RequestExecStatus.INVALID
+        logger.debug(f"User '{request.user.username}' query result: {user}")
+        if user is None:
+            logger.debug(
+                f"User with id '{request.user.tg_id}' does not exist, creating..."
+            )
+            user = await db_queries.create_user(
+                session,
+                id_=uuid.uuid4(),
+                telegram_id=request.user.tg_id,
+                username=request.user.username,
+            )
+            logger.debug(f"User '{request.user.tg_id}' has been created")
 
-    user = User(  # TODO move in other place
-        id=uuid.uuid4(), tg_id=request.user.tg_id, username=request.user.username
-    )
-    await db_queries.create_user(user)
-    try:
-        await db_queries.create_reminder(reminder, user_id=request.user.id)
-    except Exception as e:
-        logger.error(f"Database error: {e}")
-        return RequestExecStatus.DB_ERROR
+        request.user.id = user.id
 
-    return RequestExecStatus.OK
+        try:
+            reminder = Reminder(
+                id=uuid.uuid4(),
+                user_id=request.user.id,
+                time=request.time,
+                text=request.text,
+            )
+        except Exception as e:
+            logger.error(f"Invalid reminder create request: {request}")
+            return RequestExecStatus.INVALID
+
+        logger.debug(f"Creating reminder for user '{request.user.tg_id}'...")
+
+        try:
+            await db_queries.create_reminder(session, reminder)
+        except LookupError:
+            logger.error(f"Tried to create reminder '{reminder}' for non-existing user")
+            return RequestExecStatus.DB_ERROR
+        except Exception as e:
+            logger.error(f"Database error during reminder creation: {e}")
+            return RequestExecStatus.DB_ERROR
+
+        logger.debug(f"Successfully created reminder for user '{request.user.tg_id}'")
+
+        return RequestExecStatus.OK
 
 
 def get_reminder(request: ReminderGetRequest) -> Reminder | None:

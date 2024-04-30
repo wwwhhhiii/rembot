@@ -10,7 +10,7 @@ class User:
 
     tg_id: int
     username: str
-    id: uuid.UUID | None = field(default=None)
+    id: uuid.UUID
 
 
 @dataclass
