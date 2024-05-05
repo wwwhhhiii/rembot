@@ -2,11 +2,15 @@ import datetime
 import uuid
 
 import aiogram
+from aiogram import F
 from aiogram.filters import Command
+import aiogram.filters
+import aiogram.filters.callback_data
 from aiogram.filters.command import CommandObject
 from loguru import logger
 
 from telegram.keyboards import get_main_menu_keyboard
+from telegram.callback_data import UserCmdCallback, UserCmds
 from telegram.utils import (
     parse_remind_cmd_args,
 )
@@ -18,7 +22,7 @@ router = aiogram.Router(name="rem")
 
 
 @router.message(Command("start"))  # type: ignore
-async def cmd_start_handler(
+async def cmd_start(
     message: aiogram.types.Message,
 ) -> None:
     """
@@ -39,7 +43,7 @@ async def cmd_start_handler(
 
 
 @router.message(Command("remind"))  # type: ignore
-async def cmd_create_reminder_handler(
+async def cmd_create_reminder(
     message: aiogram.types.Message,
     command: CommandObject,
 ) -> None:
@@ -78,28 +82,47 @@ async def cmd_create_reminder_handler(
         await message.answer(f"Something went wrong ({res.name})")
 
 
-@router.message(Command("get-reminders"))  # type: ignore
-async def cmd_get_my_reminders(
-    message: aiogram.types.Message,
-    command: CommandObject,
-) -> None:
-    """"""
+@router.callback_query(UserCmdCallback.filter(F.cmd == UserCmds.CREATE_REMINDER))  # type: ignore
+async def clb_create_reminder(query: aiogram.types.CallbackQuery) -> None:
 
-    fromuser = message.from_user
-    if fromuser is None:
-        logger.debug(f"Unable to get user of the message")
+    if query.data is None:
         return
 
-    logger.debug(f"Recieved /get-reminders command from {message.from_user.username}")
+    await query.answer("Not implemented")
 
-    reminders = await get_user_reminders(fromuser.id)
+
+@router.callback_query(UserCmdCallback.filter(F.cmd == UserCmds.LIST_REMINDERS))  # type: ignore
+async def clb_list_reminders(query: aiogram.types.CallbackQuery) -> None:
+
+    if query.data is None:
+        return
+
+    reminders = await get_user_reminders(query.from_user.id)
 
     if reminders is None:
-        await message.answer("Unknown user")
+        await query.message.answer("Unknown user")
         return
 
     if len(reminders) == 0:
-        await message.answer("No reminders were found")
+        await query.message.answer("No reminders were set yet")
         return
 
-    await message.answer("\n".join(map(str, reminders)))
+    await query.message.answer("\n".join(map(str, reminders)))
+
+
+@router.callback_query(UserCmdCallback.filter(F.cmd == UserCmds.UPDATE_REMINDER))  # type: ignore
+async def clb_update_reminder(query: aiogram.types.CallbackQuery) -> None:
+
+    if query.data is None:
+        return
+
+    await query.answer("Not implemented")
+
+
+@router.callback_query(UserCmdCallback.filter(F.cmd == UserCmds.DELETE_REMINDER))  # type: ignore
+async def clb_delete_reminder(query: aiogram.types.CallbackQuery) -> None:
+
+    if query.data is None:
+        return
+
+    await query.answer("Not implemented")
