@@ -45,9 +45,10 @@ async def dispatch_reminder_after(
 
     await asyncio.sleep(after_sec)
     # TODO load fresh reminder
-    reminder = await db_queries.get_reminder(reminder_id)
-    if reminder is None:
-        return None
+    async with async_scoped_session_factory() as session:
+        reminder = await db_queries.get_reminder_by_id(session, reminder_id)
+        if reminder is None:
+            return None
     # TODO dispatch
     await tg_utils.send_reminders_to_users(user_id=reminder.user_id)
     reminder = await on_reminder_dispatch_cleanup(reminder.id)

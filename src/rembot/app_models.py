@@ -8,9 +8,8 @@ import enum
 class User:
     """"""
 
-    tg_id: int
-    username: str
     id: uuid.UUID
+    tg_id: int
 
 
 @dataclass
@@ -21,6 +20,10 @@ class Reminder:
     user_id: uuid.UUID
     time: datetime.datetime  # TODO add time validation at init
     text: str
+
+    def __str__(self) -> str:
+
+        return f"{self.time}: {self.text}"
 
 
 @dataclass

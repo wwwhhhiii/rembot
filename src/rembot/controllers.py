@@ -1,4 +1,5 @@
 import uuid
+import datetime
 
 from loguru import logger
 
@@ -18,7 +19,11 @@ import utils
 from telegram import utils as tg_utils
 
 
-async def create_reminder(request: ReminderCreateRequest) -> RequestExecStatus:
+async def create_reminder(
+    user_tg_id: int,
+    reminder_time: datetime.datetime,
+    reminder_text: str,
+) -> RequestExecStatus:
     """Creates a reminder from request for existing or yet non-existing user.
 
     If `request` contains unknown telegram id - creates new user
@@ -28,36 +33,33 @@ async def create_reminder(request: ReminderCreateRequest) -> RequestExecStatus:
     # logger.error(f"Invalid reminder create request: {request}")
     # return RequestExecStatus.INVALID
 
-    async with async_scoped_session_factory() as session:
-        logger.debug(f"Querying for user '{request.user.username}' in database...")
+    async with async_scoped_session_factory() as db_session:
+        logger.debug(f"Querying for user '{user_tg_id}' in database...")
         user = await db_queries.get_user_by_tg_id(
-            session,
-            telegram_id=request.user.tg_id,
+            db_session,
+            telegram_id=user_tg_id,
         )
-        logger.debug(f"User '{request.user.username}' query result: {user}")
+        logger.debug(f"User '{user_tg_id}' query result: {user}")
         if user is None:
-            logger.debug(
-                f"User with id '{request.user.tg_id}' does not exist, creating..."
-            )
+            logger.debug(f"User with id '{user_tg_id}' does not exist, creating...")
             user = await db_queries.create_user(
-                session,
+                db_session,
                 id_=uuid.uuid4(),
-                telegram_id=request.user.tg_id,
-                username=request.user.username,
+                telegram_id=user_tg_id,
             )
-            logger.debug(f"User '{request.user.tg_id}' has been created")
+            logger.debug(f"User '{user_tg_id}' has been created")
 
         reminder = Reminder(
             id=uuid.uuid4(),
             user_id=user.id,
-            time=request.time,
-            text=request.text,
+            time=reminder_time,
+            text=reminder_text,
         )
 
-        logger.debug(f"Creating reminder for user '{request.user.tg_id}'...")
+        logger.debug(f"Creating reminder for user '{user_tg_id}'...")
 
         try:
-            await db_queries.create_reminder(session, reminder)
+            await db_queries.create_reminder(db_session, reminder)
         except LookupError:
             logger.error(f"Tried to create reminder '{reminder}' for non-existing user")
             return RequestExecStatus.DB_ERROR
@@ -65,28 +67,31 @@ async def create_reminder(request: ReminderCreateRequest) -> RequestExecStatus:
             logger.error(f"Database error during reminder creation: {e}")
             return RequestExecStatus.DB_ERROR
 
-        logger.debug(f"Successfully created reminder for user '{request.user.tg_id}'")
+        logger.debug(f"Successfully created reminder for user '{user_tg_id}'")
 
         return RequestExecStatus.OK
 
 
-def get_reminder(request: ReminderGetRequest) -> Reminder | None:
+async def get_reminder(request: ReminderGetRequest) -> Reminder | None:
     """"""
 
-    # TODO get reminder by id
-    request.reminder_id
+    async with async_scoped_session_factory() as db_session:
+        reminder = await db_queries.get_reminder_by_id(
+            db_session, id_=request.reminder_id
+        )
 
-    # TODO return success status
-
-    return None
+    return reminder
 
 
-def get_user_reminders(username: str) -> None:
+async def get_user_reminders(user_tg_id: int) -> list[Reminder] | None:
     """"""
 
-    # TODO return paginated reminders
+    async with async_scoped_session_factory() as db_session:
+        reminders = await db_queries.get_user_reminders(
+            db_session, user_tg_id=user_tg_id
+        )
 
-    return None
+    return reminders
 
 
 def update_reminder(request: ReminderUpdateRequest) -> RequestExecStatus:

@@ -1,9 +1,9 @@
 import uuid
 import datetime
 
-from loguru import logger
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_
+from sqlalchemy.orm import selectinload, load_only
 
 from db.models import DBReminder, DBUser
 from app_models import Reminder, User
@@ -13,7 +13,6 @@ async def create_user(
     session: AsyncSession,
     id_: uuid.UUID,
     telegram_id: int,
-    username: str,
 ) -> User:
     """Creates new user in database
 
@@ -21,10 +20,10 @@ async def create_user(
     """
 
     async with session.begin() as transaction:
-        user = DBUser(id=id_, tg_id=telegram_id, username=username)
+        user = DBUser(id=id_, tg_id=telegram_id)
         session.add(user)  # TODO catch errors
 
-        created_user = User(id=user.id, tg_id=user.tg_id, username=username)
+        created_user = User(id=user.id, tg_id=user.tg_id)
 
     return created_user
 
@@ -45,7 +44,7 @@ async def get_user_by_tg_id(
         if res is None:
             return None
 
-        user = User(id=res.id, tg_id=res.tg_id, username=res.username)
+        user = User(id=res.id, tg_id=res.tg_id)
 
     return user
 
@@ -61,10 +60,10 @@ async def create_reminder(
     session: AsyncSession,
     reminder: Reminder,
 ) -> None:
-    """Creates new reminder in database.\n
-    Binds to existing user from database.
+    """Creates new reminder and writes it to database.\n
+    Binds this reminder to existing user from database by user id.
 
-    raises `LookupError` when user not found
+    raises `LookupError` when user with user id from reminder is not found in database.
     """
 
     async with session.begin() as transaction:
@@ -80,17 +79,49 @@ async def create_reminder(
     return None
 
 
-async def get_reminder(id: uuid.UUID) -> Reminder | None:
+async def get_reminder_by_id(
+    session: AsyncSession,
+    id_: uuid.UUID,
+) -> Reminder | None:
 
-    # reminder = await DBReminder.filter(id=str(id)).first()
-    # if reminder is None:
-    #     return None
+    stmt = select(Reminder).where(Reminder.id == id_)
+    async with session.begin() as transaction:
+        reminder = await session.scalar(stmt)
 
-    # return Reminder(id=reminder.id, time=reminder.time, text=reminder.text)
+        if reminder is None:
+            return None
 
-    # TODO update to sqlalchemy
+        return Reminder(
+            id=reminder.id,
+            user_id=reminder.user_id,
+            time=reminder.time,
+            text=reminder.text,
+        )
 
-    return None
+
+async def get_user_reminders(
+    session: AsyncSession,
+    user_tg_id: int,
+) -> list[Reminder] | None:
+    """
+    Returns `None` if user is not found
+    """
+
+    # TODO mb generator with limit
+
+    async with session.begin() as transaction:
+        stmt = (
+            select(DBUser)
+            .where(DBUser.tg_id == user_tg_id)
+            .options(
+                selectinload(DBUser.reminders),
+            )
+        )
+        user = await session.scalar(stmt)
+        if user is None:
+            return None
+
+        return [Reminder(r.id, r.user_id, r.time, r.text) for r in user.reminders]
 
 
 async def get_reminders_within_time(

@@ -1,4 +1,5 @@
 import datetime
+import uuid
 
 import aiogram
 from aiogram.filters import Command
@@ -9,7 +10,7 @@ from telegram.keyboards import get_main_menu_keyboard
 from telegram.utils import (
     parse_remind_cmd_args,
 )
-from controllers import RequestExecStatus, create_reminder
+from controllers import RequestExecStatus, create_reminder, get_user_reminders
 from app_models import ReminderCreateRequest, User
 
 
@@ -48,8 +49,12 @@ async def cmd_create_reminder_handler(
     ...
     """
 
-    if message.from_user is not None:
-        logger.debug(f"Recieved /remind command from {message.from_user.username}")
+    fromuser = message.from_user
+    if fromuser is None:
+        logger.debug(f"Unable to get user of the message")
+        return
+
+    logger.debug(f"Recieved /remind command from {message.from_user.username}")
 
     args = parse_remind_cmd_args(command.args)
     if args is None:
@@ -57,22 +62,9 @@ async def cmd_create_reminder_handler(
         await message.answer(f"Invalid command format")
         return
 
-    fromuser = message.from_user
-    if fromuser is None:
-        logger.debug(f"Unable to get user of the message")
-        return
-
-    username = "" if fromuser.username is None else fromuser.username
-
-    req = ReminderCreateRequest(
-        user=User(
-            tg_id=fromuser.id,
-            username=username,
-        ),
-        time=args.rem_time.replace(tzinfo=datetime.timezone.utc),
-        text=args.text,
+    res = await create_reminder(
+        user_tg_id=fromuser.id, reminder_time=args.rem_time, reminder_text=args.text
     )
-    res = await create_reminder(req)
 
     if res == RequestExecStatus.OK:
         date = args.rem_time.date()
@@ -84,3 +76,30 @@ async def cmd_create_reminder_handler(
         await message.answer(answer)
     else:
         await message.answer(f"Something went wrong ({res.name})")
+
+
+@router.message(Command("get-reminders"))  # type: ignore
+async def cmd_get_my_reminders(
+    message: aiogram.types.Message,
+    command: CommandObject,
+) -> None:
+    """"""
+
+    fromuser = message.from_user
+    if fromuser is None:
+        logger.debug(f"Unable to get user of the message")
+        return
+
+    logger.debug(f"Recieved /get-reminders command from {message.from_user.username}")
+
+    reminders = await get_user_reminders(fromuser.id)
+
+    if reminders is None:
+        await message.answer("Unknown user")
+        return
+
+    if len(reminders) == 0:
+        await message.answer("No reminders were found")
+        return
+
+    await message.answer("\n".join(map(str, reminders)))
