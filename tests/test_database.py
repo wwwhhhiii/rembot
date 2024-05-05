@@ -34,7 +34,6 @@ async def test_get_reminders_in_timeframe() -> None:
                 [
                     DBUser(
                         tg_id=00000,
-                        username="000",
                         reminders=[
                             DBReminder(time=out1, text="I'm out"),
                             DBReminder(time=in1, text="I'm in"),
@@ -42,7 +41,6 @@ async def test_get_reminders_in_timeframe() -> None:
                     ),
                     DBUser(
                         tg_id=11111,
-                        username="111",
                         reminders=[
                             DBReminder(time=in2, text="I'm in"),
                             DBReminder(time=out2, text="I'm out"),
