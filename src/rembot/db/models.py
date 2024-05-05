@@ -24,7 +24,7 @@ class DBUser(Base):
     )
 
     def __str__(self) -> str:
-        return str(self.username)
+        return str(self.id)
 
 
 class DBReminder(Base):
