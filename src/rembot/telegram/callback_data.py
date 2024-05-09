@@ -1,4 +1,5 @@
 import datetime
+import uuid
 from enum import Enum
 
 from aiogram import filters
@@ -22,3 +23,11 @@ class ListRemindersCallback(filters.callback_data.CallbackData, prefix="rem"):  
     """"""
 
     ...
+
+
+class UpdateReminderCallback(filters.callback_data.CallbackData, prefix="rem"):  # type: ignore
+    """"""
+
+    id_: uuid.UUID
+    time: datetime.datetime | None
+    text: str | None

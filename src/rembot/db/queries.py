@@ -2,7 +2,7 @@ import uuid
 import datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_
+from sqlalchemy import select, and_, update, insert
 from sqlalchemy.orm import selectinload, load_only
 
 from db.models import DBReminder, DBUser
@@ -74,7 +74,7 @@ async def create_reminder(
         rem = DBReminder(
             time=reminder.time, text=reminder.text, user_id=reminder.user_id
         )
-        session.add(rem)  # TODO catch errors
+        session.add(rem)  # TODO returning insert
 
     return None
 
@@ -138,6 +138,36 @@ async def get_reminders_within_time(
         reminders = await session.scalars(stmt)
 
         return [Reminder(rec.id, rec.user_id, rec.time, rec.text) for rec in reminders]
+
+
+async def update_reminder(
+    session: AsyncSession,
+    id_: uuid.UUID,
+    time: datetime.datetime | None,
+    text: str | None,
+) -> None:
+    """"""
+
+    if time is None and text is None:
+        raise ValueError  # TODO
+
+    update_obj: dict[str, uuid.UUID | datetime.datetime | str] = {
+        "id": id_,
+    }
+    if time is not None:
+        update_obj["time"] = time
+    if text is not None:
+        update_obj["text"] = text
+
+    async with session.begin() as transaction:
+        await session.execute(
+            update(DBReminder),
+            [
+                update_obj,
+            ],
+        )
+
+    return
 
 
 async def delete_reminder(id: uuid.UUID) -> Reminder | None:

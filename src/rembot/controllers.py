@@ -94,20 +94,22 @@ async def get_user_reminders(user_tg_id: int) -> list[Reminder] | None:
     return reminders
 
 
-def update_reminder(request: ReminderUpdateRequest) -> RequestExecStatus:
+async def update_reminder(
+    id_: uuid.UUID,
+    time: datetime.datetime | None,
+    text: str | None,
+) -> None:
     """"""
 
-    # TODO load reminder from db, check if exists
-    reminder = ...
-    if reminder is None:
-        ...  # TODO return does not exist status
+    async with async_scoped_session_factory() as session:
+        reminder = await db_queries.get_reminder_by_id(session, id_=id_)
 
-    # TODO if updated text -> update text in db
-    # TODO if updated time -> update time in db -> delete worker, start worker with new time
+        if reminder is None:
+            return None
 
-    # TODO return success status
+        await db_queries.update_reminder(session, id_=id_, time=time, text=text)
 
-    return RequestExecStatus.OK
+    return
 
 
 def delete_reminder(request: ReminderDeleteRequest) -> RequestExecStatus:

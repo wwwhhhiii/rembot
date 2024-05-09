@@ -9,12 +9,17 @@ import aiogram.filters.callback_data
 from aiogram.filters.command import CommandObject
 from loguru import logger
 
-from telegram.keyboards import get_main_menu_keyboard
-from telegram.callback_data import UserCmdCallback, UserCmds
+from telegram.keyboards import main_menu_keyboard, get_reminders_as_buttons_markup
+from telegram.callback_data import UserCmdCallback, UserCmds, UpdateReminderCallback
 from telegram.utils import (
     parse_remind_cmd_args,
 )
-from controllers import RequestExecStatus, create_reminder, get_user_reminders
+from controllers import (
+    RequestExecStatus,
+    create_reminder,
+    get_user_reminders,
+    update_reminder,
+)
 from app_models import ReminderCreateRequest, User
 
 
@@ -34,11 +39,9 @@ async def cmd_start(
     if message.from_user is not None:
         logger.debug(f"Recieved /start command from {message.from_user.username}")
 
-    settings = {"resize_keyboard": True}
-
     await message.answer(
         "Reminder bot is started",
-        reply_markup=get_main_menu_keyboard().as_markup(**settings),
+        reply_markup=main_menu_keyboard,
     )
 
 
@@ -111,12 +114,46 @@ async def clb_list_reminders(query: aiogram.types.CallbackQuery) -> None:
 
 
 @router.callback_query(UserCmdCallback.filter(F.cmd == UserCmds.UPDATE_REMINDER))  # type: ignore
-async def clb_update_reminder(query: aiogram.types.CallbackQuery) -> None:
+async def clb_list_reminders_for_update(query: aiogram.types.CallbackQuery) -> None:
+
+    logger.debug("Querying reminders available for update...")
+    reminders = await get_user_reminders(query.from_user.id)
+
+    if reminders is None:
+        await query.message.answer("Unknown user")
+        return
+
+    logger.debug(f"Got {len(reminders)} available reminders for update")
+
+    if len(reminders) == 0:
+        await query.message.answer("No reminders were set yet")
+
+    await query.message.answer(
+        "Choose reminder to update",
+        reply_markup=get_reminders_as_buttons_markup(reminders),
+    )
+
+
+@router.callback_query(UpdateReminderCallback)  # type: ignore
+async def clb_update_reminder(
+    query: aiogram.types.CallbackQuery,
+    callback_data: UpdateReminderCallback,
+) -> None:
+
+    logger.debug(f"Reminder update callback query data: {callback_data}")
 
     if query.data is None:
         return
 
-    await query.answer("Not implemented")
+    if callback_data.time is None and callback_data.text is None:
+        query.answer("No update provided")
+        return
+
+    await update_reminder(
+        id_=callback_data.id_, time=callback_data.time, text=callback_data.text
+    )
+
+    await query.answer("Updated")
 
 
 @router.callback_query(UserCmdCallback.filter(F.cmd == UserCmds.DELETE_REMINDER))  # type: ignore
