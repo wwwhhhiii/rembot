@@ -25,6 +25,29 @@ class ListRemindersCallback(filters.callback_data.CallbackData, prefix="rem"):  
     ...
 
 
+class ReminderToUpdateChoice(
+    filters.callback_data.CallbackData,  # type: ignore
+    prefix="rem",
+    sep="&",
+):
+    """"""
+
+    id_: uuid.UUID
+    time: datetime.datetime
+
+
+class ReminderProps(str, Enum):
+
+    TIME = "time"
+    TEXT = "text"
+
+
+class ReminderPropertyUpdateChoice(filters.callback_data.CallbackData, prefix="rem"):  # type: ignore
+    """"""
+
+    property_: ReminderProps
+
+
 class UpdateReminderCallback(filters.callback_data.CallbackData, prefix="rem"):  # type: ignore
     """"""
 

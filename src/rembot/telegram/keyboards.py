@@ -8,7 +8,13 @@ from aiogram.types import (
     KeyboardButton,
 )
 
-from telegram.callback_data import UserCmdCallback, UserCmds
+from telegram.callback_data import (
+    UserCmdCallback,
+    UserCmds,
+    ReminderToUpdateChoice,
+    ReminderPropertyUpdateChoice,
+    ReminderProps,
+)
 from app_models import Reminder
 
 
@@ -41,20 +47,60 @@ def _get_main_menu_keyboard_markup() -> InlineKeyboardMarkup:
 main_menu_keyboard = _get_main_menu_keyboard_markup()
 
 
-def get_reminders_as_buttons_markup(reminders: list[Reminder]) -> ReplyKeyboardMarkup:
+def get_reminders_to_update_keyboard(reminders: list[Reminder]) -> InlineKeyboardMarkup:
 
-    rem_time = [r.text for r in reminders]
-    if len(rem_time) % 2 != 0:
-        rem_time.append(" ")
+    # if len(reminders) % 2 != 0:
+    #     ...
+    #     # reminders.append(" ")  # TODO
 
-    half1 = rem_time[: len(rem_time) // 2]
-    half2 = rem_time[len(rem_time) // 2 :]
+    # half1 = reminders[: len(reminders) // 2]
+    # half2 = reminders[len(reminders) // 2 :]
 
-    buttons = [
-        [KeyboardButton(text=str(r1)), KeyboardButton(text=str(r2))]
-        for r1, r2 in zip(half1, half2)
-    ]
+    # buttons = []
 
-    markup = ReplyKeyboardMarkup(keyboard=buttons)
+    # for rem1, rem2 in zip(half1, half2):
+    #     row = [
+    #         InlineKeyboardButton(
+    #             text=rem1.text,
+    #             callback_data=ReminderToUpdateChoice(
+    #                 id_=rem1.id, time=rem1.time, text=rem1.text).pack(),
+    #         ),
+    #         InlineKeyboardButton(
+    #             text=rem2.text,
+    #             callback_data=ReminderToUpdateChoice(
+    #                 id_=rem2.id, time=rem2.time, text=rem2.text).pack(),
+    #         ),
+    #     ]
+    #     buttons.append(row)
 
-    return markup
+    # markup = InlineKeyboardMarkup(keyboard=buttons)
+    # TODO adjust by number of columns
+
+    builder = keyboard.InlineKeyboardBuilder()
+
+    for r in reminders:
+        builder.button(
+            text=r.text,
+            callback_data=ReminderToUpdateChoice(id_=r.id, time=r.time),
+        )
+
+    return builder.as_markup()
+
+
+def _get_reminder_property_choice_keyboard() -> InlineKeyboardMarkup:
+
+    builder = keyboard.InlineKeyboardBuilder()
+
+    builder.button(
+        text="Update time",
+        callback_data=ReminderPropertyUpdateChoice(property_=ReminderProps.TIME),
+    )
+    builder.button(
+        text="Update text",
+        callback_data=ReminderPropertyUpdateChoice(property_=ReminderProps.TEXT),
+    )
+
+    return builder.as_markup()
+
+
+reminder_property_choice_keyboard = _get_reminder_property_choice_keyboard()
