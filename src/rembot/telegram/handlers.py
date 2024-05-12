@@ -11,7 +11,6 @@ import aiogram.filters.callback_data
 from aiogram.filters.command import CommandObject
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
-from aiogram.methods.delete_message import DeleteMessage
 
 from telegram.keyboards import (
     main_menu_keyboard,
@@ -23,6 +22,8 @@ from telegram.callback_data import (
     UserCmds,
     UpdateReminderCallback,
     ReminderToUpdateChoice,
+    ReminderEditMenu,
+    ReminderEditMenuOpts,
 )
 from telegram.utils import (
     parse_remind_cmd_args,
@@ -53,7 +54,7 @@ async def cmd_start(
         logger.debug(f"Recieved /start command from {message.from_user.username}")
 
     await message.answer(
-        "Reminder bot is started",
+        "Choose operation",
         reply_markup=main_menu_keyboard,
     )
 
@@ -133,7 +134,7 @@ async def clb_list_reminders(query: aiogram.types.CallbackQuery) -> None:
 class UpdateReminderForm(StatesGroup):  # type: ignore
 
     reminder_choice = State()
-    props_choice = State()
+    reminder_edit_menu = State()
     prop_edit = State()
     time_edit = State()
     text_edit = State()
@@ -165,6 +166,8 @@ async def clb_list_reminders_for_update(
         reply_markup=get_reminders_to_update_keyboard(reminders),
     )
 
+    await query.message.delete()
+
 
 @router.callback_query(
     UpdateReminderForm.reminder_choice,
@@ -186,7 +189,7 @@ async def clb_on_update_reminder_choice(
         reminder_id=callback_data.id_,
         reminder_time=callback_data.time,
     )
-    await state.set_state(UpdateReminderForm.props_choice)
+    await state.set_state(UpdateReminderForm.reminder_edit_menu)
 
     await query.message.answer(
         "Choose what to update",
@@ -197,79 +200,137 @@ async def clb_on_update_reminder_choice(
     await query.message.delete()
 
 
-@router.message(
-    UpdateReminderForm.props_choice,
-    F.text.casefold() == "time",
+@router.callback_query(
+    UpdateReminderForm.reminder_edit_menu,
+    ReminderEditMenu.filter(F.opt == ReminderEditMenuOpts.CANCEL),
 )  # type: ignore
-async def on_reminder_time_update_choice(message: Message, state: FSMContext) -> None:
+async def on_reminder_edit_cancel(
+    query: aiogram.types.CallbackQuery,
+    state: FSMContext,
+) -> None:
+    """Triggered when user cancels reminder update process
+
+    Ends update FSM state
+    """
+
+    logger.debug("User cancelled reminder update")
+
+    await state.clear()
+
+    await query.answer("Update operation cancelled")
+    await query.message.answer(
+        text="Choose option",
+        reply_markup=main_menu_keyboard,
+    )
+    await query.message.delete()
+
+
+@router.callback_query(
+    UpdateReminderForm.reminder_edit_menu,
+    ReminderEditMenu.filter(F.opt == ReminderEditMenuOpts.CONFIRM),
+)  # type: ignore
+async def on_reminder_edit_confirm(
+    query: aiogram.types.CallbackQuery,
+    state: FSMContext,
+) -> None:
+    """Triggered when user confirms reminder update process
+
+    Ends update FSM state
+    """
+
+    logger.debug("User confirmed reminder update")
+
+    data = await state.get_data()
+    updated_time = data.get("updated_time", None)
+    updated_text = data.get("updated_text", None)
+
+    if (updated_time, updated_text) == (None, None):
+        logger.debug("User updated nothing")
+        await query.answer("Nothing selected for update, returning...")
+    else:
+        await update_reminder(id_=data["id"], time=updated_time, text=updated_text)
+        await query.answer("Reminder has been successfully updated")
+
+    await state.clear()
+    await query.message.answer(
+        text="Choose option",
+        reply_markup=main_menu_keyboard,
+    )
+    await query.message.delete()
+
+
+@router.callback_query(
+    UpdateReminderForm.reminder_edit_menu,
+    ReminderEditMenu.filter(F.opt == ReminderEditMenuOpts.UPD_TIME),
+)  # type: ignore
+async def on_reminder_time_update_choice(
+    query: aiogram.types.CallbackQuery,
+    state: FSMContext,
+) -> None:
     """Triggered when user chooses to update reminder time"""
 
     logger.debug("Updating reminder time")
 
     await state.set_state(UpdateReminderForm.time_edit)
-    await message.answer(f"Enter new reminder time")
+    await query.message.answer(f"Enter new reminder time below:")
 
 
-@router.message(
-    UpdateReminderForm.props_choice,
-    F.text.casefold() == "text",
+@router.callback_query(
+    UpdateReminderForm.reminder_edit_menu,
+    ReminderEditMenu.filter(F.opt == ReminderEditMenuOpts.UPD_TXT),
 )  # type: ignore
-async def on_reminder_text_update_choice(message: Message, state: FSMContext) -> None:
+async def on_reminder_text_update_choice(
+    query: aiogram.types.CallbackQuery,
+    state: FSMContext,
+) -> None:
     """Triggeered when user chooses to update reminder text"""
 
     logger.debug("Updating reminder text")
 
     await state.set_state(UpdateReminderForm.text_edit)
-    await message.answer(f"Enter new reminder text")
+    await query.message.answer(f"Enter new reminder text below:")
 
 
 @router.message(UpdateReminderForm.time_edit)  # type: ignore
 async def on_reminder_time_edit(message: Message, state: FSMContext) -> None:
-    """Triggered when user enters new time for reminder"""
+    """Triggered when user enters new time for reminder
+
+    Sets state back to reminder update menu
+    """
 
     logger.debug(f"User entered new reminder time: {message.text}")
 
+    # TODO parse time properly
+    new_time = datetime.datetime.strptime(message.text, "%d %B, %Y")
+    await state.update_data(updated_time=new_time)
+
     data = await state.get_data()
+    await message.answer(
+        f"Updated time of reminder {data['reminder_id']} with {new_time}"
+    )
 
-    ...
-
-    await message.answer(f"Updated time of reminder {data['reminder_id']}")
+    await state.set_state(UpdateReminderForm.reminder_edit_menu)
+    await message.delete()
 
 
 @router.message(UpdateReminderForm.text_edit)  # type: ignore
 async def on_reminder_text_edit(message: Message, state: FSMContext) -> None:
-    """"""
+    """Triggered when user enters new text for reminder
+
+    Sets state back to reminder update menu
+    """
 
     logger.debug(f"user entered new reminder text: {message.text}")
 
+    # TODO parse and validate new text
+    new_text = message.text
+    await state.update_data(updated_text=new_text)
+
     data = await state.get_data()
-
-    ...
-
     await message.answer(f"Updated text of reminder {data['reminder_id']}")
 
-
-@router.callback_query(UpdateReminderCallback)  # type: ignore
-async def clb_update_reminder(
-    query: aiogram.types.CallbackQuery,
-    callback_data: UpdateReminderCallback,
-) -> None:
-    """Triggered when user has commited update to specific reminder"""
-
-    logger.debug(f"Reminder update callback query data: {callback_data}")
-
-    if query.data is None:  # TODO ???
-        return
-
-    if callback_data.time is None and callback_data.text is None:
-        query.answer("No update provided")
-        return
-
-    await update_reminder(
-        id_=callback_data.id_, time=callback_data.time, text=callback_data.text
-    )
-
-    await query.answer("Updated")
+    await state.set_state(UpdateReminderForm.reminder_edit_menu)
+    await message.delete()
 
 
 # DELETE

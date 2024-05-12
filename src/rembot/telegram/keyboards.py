@@ -12,6 +12,8 @@ from telegram.callback_data import (
     UserCmdCallback,
     UserCmds,
     ReminderToUpdateChoice,
+    ReminderEditMenu,
+    ReminderEditMenuOpts,
 )
 from app_models import Reminder
 
@@ -76,7 +78,7 @@ def get_reminders_to_update_keyboard(reminders: list[Reminder]) -> InlineKeyboar
 
     builder = keyboard.InlineKeyboardBuilder()
 
-    for r in reminders:
+    for r in reminders:  # TODO add cancel button
         builder.button(
             text=r.text,
             callback_data=ReminderToUpdateChoice(id_=r.id, time=r.time),
@@ -87,8 +89,37 @@ def get_reminders_to_update_keyboard(reminders: list[Reminder]) -> InlineKeyboar
 
 def _get_reminder_property_choice_keyboard() -> InlineKeyboardMarkup:
 
-    markup = ReplyKeyboardMarkup(
-        keyboard=[[KeyboardButton(text="Time"), KeyboardButton(text="Text")]],
+    markup = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="Time",
+                    callback_data=ReminderEditMenu(
+                        opt=ReminderEditMenuOpts.UPD_TIME
+                    ).pack(),
+                ),
+                InlineKeyboardButton(
+                    text="Text",
+                    callback_data=ReminderEditMenu(
+                        opt=ReminderEditMenuOpts.UPD_TXT
+                    ).pack(),
+                ),
+            ],
+            [
+                InlineKeyboardButton(
+                    text="Confirm",
+                    callback_data=ReminderEditMenu(
+                        opt=ReminderEditMenuOpts.CONFIRM
+                    ).pack(),
+                ),
+                InlineKeyboardButton(
+                    text="Cancel",
+                    callback_data=ReminderEditMenu(
+                        opt=ReminderEditMenuOpts.CANCEL
+                    ).pack(),
+                ),
+            ],
+        ],
         resize_keyboard=True,
         one_time_keyboard=True,
     )

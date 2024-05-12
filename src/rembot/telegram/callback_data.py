@@ -1,6 +1,6 @@
 import datetime
 import uuid
-from enum import Enum
+from enum import Enum, auto
 
 from aiogram import filters
 
@@ -34,6 +34,20 @@ class ReminderToUpdateChoice(
 
     id_: uuid.UUID
     time: datetime.datetime
+
+
+class ReminderEditMenuOpts(int, Enum):
+
+    UPD_TIME = auto()
+    UPD_TXT = auto()
+    CONFIRM = auto()
+    CANCEL = auto()
+
+
+class ReminderEditMenu(filters.callback_data.CallbackData, prefix="rem"):  # type: ignore
+    """"""
+
+    opt: ReminderEditMenuOpts
 
 
 class UpdateReminderCallback(filters.callback_data.CallbackData, prefix="rem"):  # type: ignore
