@@ -36,18 +36,6 @@ class ReminderToUpdateChoice(
     time: datetime.datetime
 
 
-class ReminderProps(str, Enum):
-
-    TIME = "time"
-    TEXT = "text"
-
-
-class ReminderPropertyUpdateChoice(filters.callback_data.CallbackData, prefix="rem"):  # type: ignore
-    """"""
-
-    property_: ReminderProps
-
-
 class UpdateReminderCallback(filters.callback_data.CallbackData, prefix="rem"):  # type: ignore
     """"""
 

@@ -4,16 +4,18 @@ import uuid
 from loguru import logger
 import aiogram
 from aiogram import F
+from aiogram.types import Message
 from aiogram.filters import Command
 import aiogram.filters
 import aiogram.filters.callback_data
 from aiogram.filters.command import CommandObject
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
+from aiogram.methods.delete_message import DeleteMessage
 
 from telegram.keyboards import (
     main_menu_keyboard,
-    reminder_property_choice_keyboard,
+    reminder_prop_choice_keyboard,
     get_reminders_to_update_keyboard,
 )
 from telegram.callback_data import (
@@ -21,8 +23,6 @@ from telegram.callback_data import (
     UserCmds,
     UpdateReminderCallback,
     ReminderToUpdateChoice,
-    ReminderPropertyUpdateChoice,
-    ReminderProps,
 )
 from telegram.utils import (
     parse_remind_cmd_args,
@@ -133,7 +133,10 @@ async def clb_list_reminders(query: aiogram.types.CallbackQuery) -> None:
 class UpdateReminderForm(StatesGroup):  # type: ignore
 
     reminder_choice = State()
-    props_choice_or_commit = State()
+    props_choice = State()
+    prop_edit = State()
+    time_edit = State()
+    text_edit = State()
 
 
 @router.callback_query(UserCmdCallback.filter(F.cmd == UserCmds.UPDATE_REMINDER))  # type: ignore
@@ -183,40 +186,67 @@ async def clb_on_update_reminder_choice(
         reminder_id=callback_data.id_,
         reminder_time=callback_data.time,
     )
-    await state.set_state(UpdateReminderForm.props_choice_or_commit)
+    await state.set_state(UpdateReminderForm.props_choice)
 
     await query.message.answer(
         "Choose what to update",
-        reply_markup=reminder_property_choice_keyboard,
+        reply_markup=reminder_prop_choice_keyboard,
     )
 
+    # TODO handle errors
+    await query.message.delete()
 
-@router.callback_query(
-    UpdateReminderForm.props_choice_or_commit,
-    ReminderPropertyUpdateChoice.filter(),
+
+@router.message(
+    UpdateReminderForm.props_choice,
+    F.text.casefold() == "time",
 )  # type: ignore
-async def clb_on_reminder_property_choice(
-    query: aiogram.types.CallbackQuery,
-    callback_data: ReminderPropertyUpdateChoice,
-    state: FSMContext,
-) -> None:
-    """Triggered when user chooses a reminder property to update"""
+async def on_reminder_time_update_choice(message: Message, state: FSMContext) -> None:
+    """Triggered when user chooses to update reminder time"""
 
-    prop = callback_data.property_
+    logger.debug("Updating reminder time")
 
-    logger.debug(f"User has chosen to update reminder property '{prop}'")
+    await state.set_state(UpdateReminderForm.time_edit)
+    await message.answer(f"Enter new reminder time")
+
+
+@router.message(
+    UpdateReminderForm.props_choice,
+    F.text.casefold() == "text",
+)  # type: ignore
+async def on_reminder_text_update_choice(message: Message, state: FSMContext) -> None:
+    """Triggeered when user chooses to update reminder text"""
+
+    logger.debug("Updating reminder text")
+
+    await state.set_state(UpdateReminderForm.text_edit)
+    await message.answer(f"Enter new reminder text")
+
+
+@router.message(UpdateReminderForm.time_edit)  # type: ignore
+async def on_reminder_time_edit(message: Message, state: FSMContext) -> None:
+    """Triggered when user enters new time for reminder"""
+
+    logger.debug(f"User entered new reminder time: {message.text}")
 
     data = await state.get_data()
 
-    if prop == ReminderProps.TIME:
-        logger.debug("Updating time...")
-        await query.message.answer(f"Updated time of reminder {data['reminder_id']}")
-    elif prop == ReminderProps.TEXT:
-        logger.debug("Updating text...")
-        await query.message.answer(f"Updated text of reminder {data['reminder_id']}")
-    else:
-        logger.warning(f"Recieved unknown reminder property for update '{prop}'")
-        return
+    ...
+
+    await message.answer(f"Updated time of reminder {data['reminder_id']}")
+
+
+@router.message(UpdateReminderForm.text_edit)  # type: ignore
+async def on_reminder_text_edit(message: Message, state: FSMContext) -> None:
+    """"""
+
+    logger.debug(f"user entered new reminder text: {message.text}")
+
+    data = await state.get_data()
+
+    ...
+
+    await message.answer(f"Updated text of reminder {data['reminder_id']}")
 
 
 @router.callback_query(UpdateReminderCallback)  # type: ignore

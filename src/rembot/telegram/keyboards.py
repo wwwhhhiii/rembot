@@ -12,8 +12,6 @@ from telegram.callback_data import (
     UserCmdCallback,
     UserCmds,
     ReminderToUpdateChoice,
-    ReminderPropertyUpdateChoice,
-    ReminderProps,
 )
 from app_models import Reminder
 
@@ -89,18 +87,13 @@ def get_reminders_to_update_keyboard(reminders: list[Reminder]) -> InlineKeyboar
 
 def _get_reminder_property_choice_keyboard() -> InlineKeyboardMarkup:
 
-    builder = keyboard.InlineKeyboardBuilder()
-
-    builder.button(
-        text="Update time",
-        callback_data=ReminderPropertyUpdateChoice(property_=ReminderProps.TIME),
-    )
-    builder.button(
-        text="Update text",
-        callback_data=ReminderPropertyUpdateChoice(property_=ReminderProps.TEXT),
+    markup = ReplyKeyboardMarkup(
+        keyboard=[[KeyboardButton(text="Time"), KeyboardButton(text="Text")]],
+        resize_keyboard=True,
+        one_time_keyboard=True,
     )
 
-    return builder.as_markup()
+    return markup
 
 
-reminder_property_choice_keyboard = _get_reminder_property_choice_keyboard()
+reminder_prop_choice_keyboard = _get_reminder_property_choice_keyboard()
