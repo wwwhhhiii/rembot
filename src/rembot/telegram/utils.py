@@ -48,7 +48,6 @@ def _get_remind_cmd_args_regex(
         + SPACING_REGEX
         + f"({REMIND_TEXT_REGEX})$"
     )
-    logger.debug(f"Time regex: {time_regex}")
 
     return re.compile(time_regex, flags=re.IGNORECASE)
 

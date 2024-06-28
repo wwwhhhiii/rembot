@@ -10,6 +10,7 @@ class BotSettings(BaseSettings):  # type: ignore[misc]
     """Telegram bot settings"""
 
     token: str = pydantic.Field(validation_alias="telegram_bot_token")
+    debug: bool
 
     model_config = SettingsConfigDict(
         env_file="./.env",
