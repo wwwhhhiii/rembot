@@ -105,6 +105,11 @@ async def clb_create_reminder(query: aiogram.types.CallbackQuery) -> None:
     if query.data is None:
         return
 
+    query.message.answer(
+        "Select date and time for a reminder",
+        reply_markup=...,
+    )
+
     await query.answer("Not implemented")
 
 
