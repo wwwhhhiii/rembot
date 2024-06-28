@@ -1,5 +1,3 @@
-import itertools
-
 from aiogram.utils import keyboard
 from aiogram.types import (
     ReplyKeyboardMarkup,
@@ -12,6 +10,7 @@ from telegram.callback_data import (
     UserCmdCallback,
     UserCmds,
     ReminderToUpdateChoice,
+    ReminderUpdateCancelChoice,
     ReminderEditMenu,
     ReminderEditMenuOpts,
 )
@@ -48,6 +47,7 @@ main_menu_keyboard = _get_main_menu_keyboard_markup()
 
 
 def get_reminders_to_update_keyboard(reminders: list[Reminder]) -> InlineKeyboardMarkup:
+    """Keyboard used when chosing reminders to update."""
 
     # if len(reminders) % 2 != 0:
     #     ...
@@ -77,6 +77,7 @@ def get_reminders_to_update_keyboard(reminders: list[Reminder]) -> InlineKeyboar
     # TODO adjust by number of columns
 
     builder = keyboard.InlineKeyboardBuilder()
+    builder.button(text="<< Back", callback_data=ReminderUpdateCancelChoice())
 
     for r in reminders:  # TODO add cancel button
         builder.button(
@@ -88,6 +89,7 @@ def get_reminders_to_update_keyboard(reminders: list[Reminder]) -> InlineKeyboar
 
 
 def _get_reminder_property_choice_keyboard() -> InlineKeyboardMarkup:
+    """Keyboard used when updating a reminder."""
 
     markup = InlineKeyboardMarkup(
         inline_keyboard=[
@@ -128,3 +130,13 @@ def _get_reminder_property_choice_keyboard() -> InlineKeyboardMarkup:
 
 
 reminder_prop_choice_keyboard = _get_reminder_property_choice_keyboard()
+
+
+def get_time_select_keyboard() -> InlineKeyboardMarkup:
+    """Keyboard for datetime selection.
+    Used in reminder creation.
+    """
+
+    markup = InlineKeyboardMarkup(inline_keyboard=[])  # TODO
+
+    return markup

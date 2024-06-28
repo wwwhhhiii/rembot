@@ -36,6 +36,13 @@ class ReminderToUpdateChoice(
     time: datetime.datetime
 
 
+class ReminderUpdateCancelChoice(
+    filters.callback_data.CallbackData, prefix="rem"  # type: ignore
+):
+
+    ...
+
+
 class ReminderEditMenuOpts(int, Enum):
 
     UPD_TIME = auto()
