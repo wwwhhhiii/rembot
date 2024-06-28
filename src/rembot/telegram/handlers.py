@@ -130,7 +130,12 @@ async def clb_list_reminders(query: aiogram.types.CallbackQuery) -> None:
         await query.message.answer("No reminders were set yet")
         return
 
-    await query.message.answer("\n".join(map(str, reminders)))
+    await query.message.answer(
+        "\n".join(map(str, reminders)), reply_markup=main_menu_keyboard
+    )
+
+    # delete previous message
+    await query.message.delete()
 
 
 # UPDATE
