@@ -1,9 +1,9 @@
-from typing import Iterable
+from typing import Iterable, Mapping, Any
 
 import aiogram
 
 
-def create_bot(token: str, **kwargs) -> aiogram.Bot:
+def create_bot(token: str, **kwargs: Mapping[str, Any]) -> aiogram.Bot:
     """Creates telegram bot instance"""
 
     bot = aiogram.Bot(token, **kwargs)
@@ -13,7 +13,7 @@ def create_bot(token: str, **kwargs) -> aiogram.Bot:
 
 def create_dispatcher(
     include_routers: Iterable[aiogram.Router] = [],
-    **kwargs,
+    **kwargs: Mapping[str, Any],
 ) -> aiogram.Dispatcher:
     """Creates telegram updates dispatcher instance"""
 
